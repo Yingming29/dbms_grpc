@@ -1,0 +1,39 @@
+syntax = "proto3";
+
+package dbms_grpc;
+
+service DbmsService {
+    rpc TryConnect(TryConnectMsg) returns (TryConnectMsg) {}
+
+    rpc ClientServer (stream ClientReq) returns (stream ClientRep) {} 
+
+    rpc ServerServer (stream TxnMsg) returns (stream TxnMsg) {}
+}
+
+
+message TryConnectMsg {
+    int32 name = 1;
+}
+
+message ClientReq {
+    int32 name = 1;
+    bytes data = 2;
+    int32 txn_type = 3;
+}
+
+message ClientRep {
+    int32 name = 1;
+}
+
+
+message TxnMsg {
+    int32 name = 1;
+}
+
+
+
+
+
+
+
+
