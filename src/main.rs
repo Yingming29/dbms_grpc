@@ -1,12 +1,6 @@
-
-
-
-
 // pub mod dbms_grpc {
 //     tonic::include_proto!("dbms_grpc");
 // }
-
-
 use dbms_grpc::dbms_service_server::{DbmsService, DbmsServiceServer};
 use dbms_grpc::{ClientRep, ClientReq, TryConnectMsg, TxnMsg};
 use std::collections::HashMap;
@@ -133,13 +127,13 @@ impl DbmsService for MyDbmsService {
                         data.insert(format!("txn_msg_{}", txn_msg.name), "Processed".to_string());
 
                         // Prepare a response
-                        let response = TxnMsg { name: txn_msg.name };
+                        // let response = TxnMsg { name: txn_msg.name };
 
-                        // Send the response
-                        if tx.send(Ok(response)).await.is_err() {
-                            eprintln!("Client disconnected");
-                            break;
-                        }
+                        // // Send the response
+                        // if tx.send(Ok(response)).await.is_err() {
+                        //     eprintln!("Client disconnected");
+                        //     break;
+                        // }
                     }
                     Err(e) => {
                         eprintln!("Error receiving TxnMsg: {:?}", e);
@@ -153,7 +147,7 @@ impl DbmsService for MyDbmsService {
         // Return a stream of responses
         let response_stream = ReceiverStream::new(rx);
 
-        Ok(Response::new(Box::pin(response_stream) as Self::ServerServerMsgStream))
+        Ok(Response::new(Box::pin(response_stream) as Self::ServerServerStream))
     }
 }
 
@@ -164,7 +158,7 @@ fn main() {
 
 }
 
-
+// test the timeout of ssh
 
 // fn main() {
 //     // Initialize the shared data structure
