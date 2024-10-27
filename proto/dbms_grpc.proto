@@ -3,32 +3,25 @@ syntax = "proto3";
 package dbms_grpc;
 
 service DbmsService {
-    rpc TryConnect(TryConnectMsg) returns (TryConnectMsg) {}
+    // between client and server    
+    rpc ClientServer (stream ClientServerMsg) returns (stream ClientServerMsg) {} 
 
-    rpc ClientServer (stream ClientReq) returns (stream ClientRep) {} 
+    // between server and server
+    rpc ServerServer (stream ServerServerMsg) returns (stream ServerServerMsg) {}
+}
 
-    rpc ServerServer (stream TxnMsg) returns (stream TxnMsg) {}
+message ClientServerMsg {
+    int32 id = 1;
+}
+
+message ServerServerMsg {
+    int32 id = 1;
 }
 
 
-message TryConnectMsg {
-    int32 name = 1;
-}
-
-message ClientReq {
-    int32 name = 1;
-    bytes data = 2;
-    int32 txn_type = 3;
-}
-
-message ClientRep {
-    int32 name = 1;
-}
 
 
-message TxnMsg {
-    int32 name = 1;
-}
+
 
 
 
