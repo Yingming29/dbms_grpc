@@ -10,15 +10,15 @@ pub mod dbms_grpc {
 
 #[tokio::main]
 async fn main() -> Result<(), Box<dyn std::error::Error>> {
-    // 创建与 gRPC 服务器的连接
+    // create channel to connect to server 
     let channel = Channel::from_static("http://127.0.0.1:50051").connect().await?;
     let mut client = DbmsServiceClient::new(channel);
 
-    // 启动 client_server 双向流
+    // init client_server bi-directional stream
     let (mut tx, rx) = tokio::sync::mpsc::channel(4);
     let response = client.client_server(tokio_stream::wrappers::ReceiverStream::new(rx)).await?;
 
-    // 处理来自服务器的响应
+    // process the response from server 
     let mut inbound = response.into_inner();
     tokio::spawn(async move {
         while let Some(msg) = inbound.next().await {
@@ -30,7 +30,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
         println!("client_server response stream ended.");
     });
 
-    // 发送 ClientServerMsg 消息
+    // send ClientServerMsg message
     for i in 0..5 {
         let msg = ClientServerMsg { id: i };
         if tx.send(msg).await.is_err() {
@@ -38,13 +38,13 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
             break;
         }
     }
-    drop(tx); // 显式关闭 client_server 的发送通道
+    drop(tx); // close client_server send channel explicitly
 
-    // 启动 server_server 双向流
+    // init server_server bi-directional stream
     let (mut tx2, rx2) = tokio::sync::mpsc::channel(100);
     let response2 = client.server_server(tokio_stream::wrappers::ReceiverStream::new(rx2)).await?;
 
-    // 处理来自服务器的响应
+    // process the response from server
     let mut inbound2 = response2.into_inner();
     tokio::spawn(async move {
         while let Some(msg) = inbound2.next().await {
@@ -56,7 +56,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
         println!("server_server response stream ended.");
     });
 
-    // 发送 ServerServerMsg 消息
+    // send ServerServerMsg message
     for i in 0..5 {
         let msg = ServerServerMsg { id: i };
         if tx2.send(msg).await.is_err() {
@@ -64,10 +64,14 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
             break;
         }
     }
-    drop(tx2); // 显式关闭 server_server 的发送通道
+    drop(tx2); // close server_server send channel explicitly
 
-    // 添加延时，确保所有消息处理完毕后再关闭客户端程序
+    // wait for a while before exiting
     sleep(Duration::from_secs(1)).await;
 
     Ok(())
 }
+
+
+
+

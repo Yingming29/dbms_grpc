@@ -22,6 +22,32 @@ pub mod dbms_grpc {
     tonic::include_proto!("dbms_grpc");
 }
 
+
+// Define channels hold by a Worker Thread 
+struct WorkerChannels<T> {
+    /// The channel to receive high priority txn from the IO thread, ServerServer messages 
+    txn_high_priority_rx: mpsc::Receiver<T>,    
+    /// The channel to receive low priority txn from the IO thread, ClientServer messages
+    txn_low_priority_rx: mpsc::Receiver<T>,
+    /// The channel to send response for server to the IO thread
+    server_response_tx: mpsc::Sender<T>,
+    /// The channel to send response to for client the IO thread
+    client_response_tx: mpsc::Sender<T>,
+}
+
+// Define channels hold by an IO Thread 
+struct IOChannels<T> {
+    /// The channel to send high priority txn to the Worker thread, ServerServer messages
+    txn_high_priority_tx: mpsc::Sender<T>,
+    /// The channel to send low priority txn to the Worker thread, ClientServer messages
+    txn_low_priority_tx: mpsc::Sender<T>,
+    /// The channel to receive response from the Worker thread for server
+    server_response_rx: mpsc::Receiver<T>,
+    /// The channel to receive response from the Worker thread for client
+    client_response_rx: mpsc::Receiver<T>,
+}
+
+
 /// The service struct can store the shared data's reference
 /// In this dbms, the data is transferred by Channels. 
 /// TODO: add the shared arc of channels or data structure here. 
