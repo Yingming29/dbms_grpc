@@ -1,8 +1,9 @@
-use dbms_grpc::dbms_service_server::DbmsService;
+use dbms_grpc::dbms_service_server::{DbmsService, DbmsServiceServer};
 use dbms_grpc::{ServerServerMsg, ClientServerMsg};
 use std::collections::HashMap;
 use std::pin::Pin;
 use std::sync::{Arc, Mutex};
+use std::net::SocketAddr;
 
 use tokio::sync::mpsc;
 use tonic::{transport::Server, Request, Response, Status};
@@ -23,6 +24,7 @@ pub mod dbms_grpc {
 
 /// The service struct can store the shared data's reference
 /// In this dbms, the data is transferred by Channels. 
+/// TODO: add the shared arc of channels or data structure here. 
 #[derive(Debug, Default)]
 pub struct MyDbmsService {
     // Shared data structure accessible by both gRPC and worker threads
@@ -45,7 +47,7 @@ impl DbmsService for MyDbmsService {
         let shared_data = self.shared_data.clone();
 
         // Channel to send responses
-        let (tx, rx) = mpsc::channel(4);
+        let (tx, rx) = mpsc::channel(100);
         // Spawn a task to handle incoming requests
         tokio::spawn(async move {
             while let Some(req) = stream.next().await {
@@ -88,7 +90,7 @@ impl DbmsService for MyDbmsService {
         let shared_data = self.shared_data.clone();
 
         // Channel to send responses
-        let (tx, rx) = mpsc::channel(4);
+        let (tx, rx) = mpsc::channel(100);
 
         // Spawn a task to handle incoming messages
         tokio::spawn(async move {
@@ -126,11 +128,26 @@ impl DbmsService for MyDbmsService {
     }
 }
 
-
-fn main() {
-
+#[tokio::main]
+async fn main() -> Result<(), Box<dyn std::error::Error>> {
     println!("---- main.rs starts ----");
 
+    // Define the address to listen on
+    let addr: SocketAddr = "0.0.0.0:50051".parse()?;
+
+    // Create an instance of your service
+    let dbms_service = MyDbmsService::default();
+
+    println!("DbmsService listening on {}", addr);
+
+    // Start the gRPC server
+    Server::builder()
+        .add_service(DbmsServiceServer::new(dbms_service))
+        .serve(addr)
+        .await?;
+
+    Ok(())
 }
+    
 
 

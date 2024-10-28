@@ -3,7 +3,13 @@ name = "dbms_grpc"
 version = "0.1.0"
 edition = "2021"
 
+[[bin]]
+name = "main"
+path = "src/main.rs"
 
+[[bin]]
+name = "client"
+path = "src/client.rs"
 
 [dependencies]
 tonic = "0.12.3"
