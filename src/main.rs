@@ -102,7 +102,6 @@ impl DbmsService for MyDbmsService {
         Ok(Response::new(Box::pin(response_stream) as Self::ClientServerStream))
     }
 
-
     // rpc3: The second Bi-directional streaming RPC method for ServerServer communication 
     type ServerServerStream = Pin<Box<dyn Stream<Item = Result<ServerServerMsg, Status>> + Send + Sync + 'static>>;
     async fn server_server(
