@@ -6,9 +6,8 @@ An simple example about the message communication between multiple async io-thre
 
 
 use flume::{Receiver, Sender};
-use std::thread;
+use std::{sync::{atomic::{AtomicU64, Ordering}, Arc}, thread};
 use tokio::runtime::Runtime;
-use tonic::transport::Server;
 
 // message from io to worker 
 #[derive(Debug, Clone)]
@@ -16,42 +15,46 @@ struct Message {
     content: String,
 }
 // response from worker to io
+#[allow(dead_code)]
 #[derive(Debug, Clone)]
 struct Response {
     content: String,
 }
 
+#[allow(dead_code)]
 fn main() {
     // create two channels: from worker to io, and from io to worker
     let (io_to_worker_tx, io_to_worker_rx) = flume::unbounded::<Message>();
     let (worker_to_io_tx, worker_to_io_rx) = flume::unbounded::<Response>();
 
     // crate sync worker threads
-    let num_workers = 4;
+    let num_workers = 8;
     let mut worker_handles = Vec::new();
-
+    let counter = AtomicU64::new(0);
+    let counter_arc = Arc::new(counter);
     for i in 0..num_workers {
         let io_to_worker_rx = io_to_worker_rx.clone();
         let worker_to_io_tx = worker_to_io_tx.clone();
+        let counter_arc_cloned = counter_arc.clone();
         let handle = thread::spawn(move || {
-            worker_thread(i, io_to_worker_rx, worker_to_io_tx);
+            worker_thread(i, io_to_worker_rx, worker_to_io_tx, counter_arc_cloned);
         });
         worker_handles.push(handle);
     }
 
     // tokio runtime
     let rt = Runtime::new().unwrap();
-
+    let num_io_tasks = 6;
+    let msg_num = 100000;
     rt.block_on(async {
         //  create multiple async io tasks
-        let num_io_tasks = 4;
         let mut io_handles = Vec::new();
 
         for i in 0..num_io_tasks {
             let io_to_worker_tx = io_to_worker_tx.clone();
             let worker_to_io_rx = worker_to_io_rx.clone();
             let handle = tokio::spawn(async move {
-                io_task(i, io_to_worker_tx, worker_to_io_rx).await;
+                io_task(i, io_to_worker_tx, worker_to_io_rx, msg_num).await;
             });
             io_handles.push(handle);
         }
@@ -67,17 +70,24 @@ fn main() {
         handle.join().unwrap();
     }
 
+
+
+    println!("The counter : {}", counter_arc.load(Ordering::Relaxed));    
+    assert_eq!(counter_arc.load(Ordering::Relaxed), (num_io_tasks * msg_num) as u64);
     println!("complete");
 }
 
 // worker 
+#[allow(dead_code)]
 fn worker_thread(
     id: usize,
     io_to_worker_rx: Receiver<Message>,
     worker_to_io_tx: Sender<Response>,
+    counter_arc: Arc<AtomicU64>,
 ) {
     while let Ok(msg) = io_to_worker_rx.recv() {
-        println!("Worker {} receives：{:?}", id, msg);
+        counter_arc.fetch_add(1, Ordering::Relaxed);
+        // println!("Worker {} receives：{:?}", id, msg);
         // process the message
         let response = Response {
             content: format!("Worker {} processes：{}", id, msg.content),
@@ -91,13 +101,15 @@ fn worker_thread(
 }
 
 // io task
+#[allow(dead_code)]
 async fn io_task(
     id: usize,
     io_to_worker_tx: Sender<Message>,
     worker_to_io_rx: Receiver<Response>,
+    msg_num: usize,
 ) {
     // send msg to worker 
-    for i in 0..5 {
+    for i in 0..msg_num {
         let msg = Message {
             content: format!("IO {}'s message {}", id, i),
         };
@@ -105,9 +117,9 @@ async fn io_task(
     }
 
     // receive response from worker
-    for _ in 0..5 {
-        if let Ok(response) = worker_to_io_rx.recv_async().await {
-            println!("IO {} receives response：{:?}", id, response);
+    for _ in 0..msg_num {
+        // if let Ok(response) = worker_to_io_rx.recv_async().await {
+        if let Ok(_) = worker_to_io_rx.recv_async().await {
         }
     }
 }
